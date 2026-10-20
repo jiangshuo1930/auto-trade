@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>QNO · 交易 Agent 指挥中心</title>
+<link rel="stylesheet" href="assets/css/app.css">
+</head>
+<body>
+
+<div id="bgfx"><div class="grid"></div><div class="glow a"></div><div class="glow b"></div><div class="scan"></div></div>
+
+<div id="app">
+
+  <!-- ═══════ 顶栏 ═══════ -->
+  <header id="top">
+    <div class="brand">
+      <svg class="mark" viewBox="0 0 40 40" fill="none">
+        <path d="M20 2.5 L35.5 11.5 V28.5 L20 37.5 L4.5 28.5 V11.5 Z" stroke="#22d3ee" stroke-width="1.2" opacity=".9"/>
+        <path d="M20 9 L29.5 14.5 V25.5 L20 31 L10.5 25.5 V14.5 Z" stroke="#22d3ee" stroke-width=".6" opacity=".4"/>
+        <circle cx="20" cy="20" r="2.4" fill="#22d3ee"/>
+        <circle cx="20" cy="20" r="6.2" stroke="#22d3ee" stroke-width=".7" opacity=".55"/>
+        <path d="M20 9v4.5M20 26.5V31M10.5 14.5l3.8 2.2M25.7 23.3l3.8 2.2M29.5 14.5l-3.8 2.2M14.3 23.3l-3.8 2.2" stroke="#22d3ee" stroke-width=".7" opacity=".75"/>
+      </svg>
+      <div>
+        <h1>QUANT&nbsp;NEURAL&nbsp;OPS</h1>
+        <div class="sub">AUTONOMOUS TRADING AGENT</div>
+      </div>
+    </div>
+
+    <div class="tcenter">
+      <div class="bar l"></div>
+      <div class="txt">
+        <h2>多因子交易 Agent 指挥中心</h2>
+        <div class="en">FACTOR ENGINE × RISK GATE × EXECUTION</div>
+      </div>
+      <div class="bar r"></div>
+    </div>
+
+    <div class="tright">
+      <div class="conn" id="connState">
+        <i class="led"></i><span id="modeLabel">连接中</span>
+      </div>
+      <div class="hud-mini">
+        <div><span>净值</span><b id="topEquity">—</b></div>
+        <div><span>今日</span><b id="topPnl">—</b></div>
+      </div>
+      <div class="clock"><div class="t" id="clk">--:--:--</div><div class="d" id="clkD">——</div></div>
+    </div>
+  </header>
+
+  <!-- ═══════ 主体 ═══════ -->
+  <main id="grid">
+
+    <!-- ── 左列 ── -->
+    <section class="col left">
+
+      <div class="panel" style="--i:0;flex:none">
+        <div class="ph"><span class="ix">01</span><div><h3>市场脉搏</h3><div class="en">MARKET PULSE</div></div><div class="sp"></div><span class="tag" id="pulseTag">8 标的</span></div>
+        <div class="pb pulse-list" id="pulseList"></div>
+      </div>
+
+      <div class="panel" style="--i:1;flex:none">
+        <div class="ph"><span class="ix">02</span><div><h3>风控闸门</h3><div class="en">RISK GATES</div></div><div class="sp"></div><span class="tag" id="gateTag">4 / 4</span></div>
+        <div class="pb gate-list" id="gateList"></div>
+      </div>
+
+      <div class="panel" style="--i:2;flex:1;min-height:0">
+        <div class="ph"><span class="ix">03</span><div><h3>决策日志</h3><div class="en">DECISION LOG</div></div><div class="sp"></div><span class="tag" id="logCount">0</span></div>
+        <div class="pb" style="padding:6px 0 0"><div class="log-list" id="logList"></div></div>
+      </div>
+
+    </section>
+
+    <!-- ── 中列 ── -->
+    <section class="col mid">
+
+      <div class="kpi-row">
+        <div class="kpi" style="--i:0"><div class="k">组合净值</div><div class="v" id="kEquity">—</div><div class="s" id="kEquityS">USDT</div></div>
+        <div class="kpi" style="--i:1"><div class="k">累计盈亏</div><div class="v" id="kPnl">—</div><div class="s" id="kPnlS">含手续费</div></div>
+        <div class="kpi" style="--i:2"><div class="k">夏普比率</div><div class="v" id="kSharpe">—</div><div class="s">5min 采样年化</div></div>
+        <div class="kpi" style="--i:3"><div class="k">最大回撤</div><div class="v" id="kMdd">—</div><div class="s">峰值回落</div></div>
+        <div class="kpi" style="--i:4"><div class="k">胜率</div><div class="v" id="kWin">—</div><div class="s" id="kWinS">0 笔</div></div>
+      </div>
+
+      <div class="panel chart-panel" style="--i:0;flex:1.15">
+        <div class="ph"><span class="ix">04</span><div><h3>净值曲线</h3><div class="en">EQUITY CURVE</div></div><div class="sp"></div>
+          <div class="seg" id="eqSeg"><button class="on" data-r="all">全部</button><button data-r="1h">1H</button><button data-r="15m">15M</button></div>
+        </div>
+        <div class="pb"><div id="eqChart" class="echart"></div></div>
+      </div>
+
+      <div class="panel chart-panel" style="--i:1;flex:1">
+        <div class="ph"><span class="ix">05</span><div><h3>信号排序 / 因子贡献</h3><div class="en">ALPHA RANKING</div></div><div class="sp"></div><span class="tag" id="sigTag">—</span></div>
+        <div class="pb sig-wrap">
+          <div id="alphaChart" class="echart"></div>
+          <div class="factor-detail" id="factorDetail">
+            <div class="fd-empty">点击左侧标的查看因子明细</div>
+          </div>
+        </div>
+      </div>
+
+    </section>
+
+    <!-- ── 右列 ── -->
+    <section class="col right">
+
+      <div class="panel" style="--i:0;flex:none">
+        <div class="ph"><span class="ix">06</span><div><h3>持仓</h3><div class="en">POSITIONS</div></div><div class="sp"></div><span class="tag" id="posTag">0</span></div>
+        <div class="pb pos-list" id="posList"></div>
+      </div>
+
+      <div class="panel chart-panel" style="--i:1;flex:1;min-height:0">
+        <div class="ph"><span class="ix">07</span><div><h3>因子强度矩阵</h3><div class="en">FACTOR MATRIX</div></div><div class="sp"></div>
+          <div class="seg" id="fxSeg"><button class="on" data-m="heat">热力</button><button data-m="radar">雷达</button></div>
+        </div>
+        <div class="pb"><div id="factorChart" class="echart"></div></div>
+      </div>
+
+      <div class="panel" style="--i:2;flex:none">
+        <div class="ph"><span class="ix">08</span><div><h3>引擎状态</h3><div class="en">ENGINE</div></div><div class="sp"></div><span class="tag green" id="engTag">RUNNING</span></div>
+        <div class="pb eng-grid">
+          <div><span>决策周期</span><b id="eCycle">—</b></div>
+          <div><span>单次耗时</span><b id="eMs">—</b></div>
+          <div><span>行情消息</span><b id="eMsg">—</b></div>
+          <div><span>总敞口</span><b id="eGross">—</b></div>
+          <div><span>净敞口</span><b id="eNet">—</b></div>
+          <div><span>可用资金</span><b id="eCash">—</b></div>
+        </div>
+      </div>
+
+    </section>
+  </main>
+</div>
+
+<script src="assets/vendor/echarts.min.js"></script>
+<script src="assets/js/format.js"></script>
+<script src="assets/js/charts.js"></script>
+<script src="assets/js/app.js"></script>
+</body>
+</html>

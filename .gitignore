@@ -1,0 +1,32 @@
+# ---- 本地暂存 / 预览截图 ----
+.tmp/
+.preview/
+.workbuddy/
+
+# ---- 独立子仓库（自带 .git，不并入本仓库） ----
+prompt-spider-ui/
+
+# ---- Python ----
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.pytest_cache/
+
+# ---- 运行期数据 ----
+*.db
+*.db-shm
+*.db-wal
+*.sqlite
+*.sqlite3
+*.log
+
+# ---- Node ----
+node_modules/
+
+# ---- 系统 / 编辑器 ----
+Thumbs.db
+desktop.ini
+.DS_Store
+.idea/
+.vscode/

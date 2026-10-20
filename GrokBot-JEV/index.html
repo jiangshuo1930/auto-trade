@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>GROKBOT + JEV · AI AGENT TRADING ROOM</title>
+<link rel="stylesheet" href="assets/css/room.css">
+</head>
+<body>
+
+<div id="stage">
+<div id="app" v-cloak>
+
+  <!-- ═══════════ 顶栏 ═══════════ -->
+  <header id="topbar">
+    <div class="brand">
+      <svg viewBox="0 0 28 28" class="mark">
+        <circle cx="14" cy="14" r="12" fill="none" stroke="#ff2d78" stroke-width="1.6"/>
+        <circle cx="14" cy="14" r="5.4" fill="#ff2d78"/>
+        <path d="M14 2v5M14 21v5M2 14h5M21 14h5" stroke="#ff2d78" stroke-width="1.6"/>
+      </svg>
+      <b>GROKBOT&nbsp;+&nbsp;JEV</b>
+    </div>
+    <div class="marquee"><div class="track" v-html="tickerHtml"></div></div>
+    <div class="topright">
+      <span class="lat" :class="{warn: meta.lat>14}">{{ meta.lat }}ms</span>
+      <div class="loadbar"><i :style="{width: meta.load+'%'}"></i></div>
+      <span class="utc">{{ clock }}</span>
+      <span class="conn" :class="linkState.cls" :title="linkState.msg">{{ linkState.label }}</span>
+    </div>
+  </header>
+
+  <!-- ═══════════ Agent 卡片 ×8 ═══════════ -->
+  <section id="cards">
+    <div class="acard" v-for="a in cards" :key="a.id"
+         :class="{live: st(a.id).phase!=='IDLE'}" :style="{'--c': a.color}">
+      <div class="hd">
+        <div class="ava">{{ a.icon }}</div>
+        <div><div class="nm">{{ a.name }}</div><div class="rl">{{ a.role }} · {{ a.sub }}</div></div>
+      </div>
+      <div class="val">{{ a.value }}<small>{{ a.unit }}</small></div>
+      <div class="st">
+        <template v-if="st(a.id).phase==='IDLE'"><span class="idle">IDLE · standby</span></template>
+        <template v-else-if="st(a.id).phase==='TYPING'"><b>{{ typed(a.id) }}</b><span class="cursor"></span></template>
+        <template v-else><b>✓ {{ st(a.id).text }}</b></template>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══════════ 中央 2.5D 交易室（Three.js 正交相机） ═══════════ -->
+  <section id="sceneWrap">
+    <div id="sceneHost"></div>
+    <div class="scene-frame"></div>
+    <div class="scene-tag tl">LIVE SYNC · 24/7 WALL</div>
+    <div class="scene-tag tr">{{ sessionLabel }} · {{ sourceLabel }}</div>
+    <div id="botTip" v-show="tip.show" :style="{left: tip.x+'px', top: tip.y+'px', '--c': tip.color}">
+      <h4>{{ tip.icon }} {{ tip.name }} · {{ tip.phase }}</h4>
+      <div class="row"><span>ROLE</span><b>{{ tip.role }}</b></div>
+      <div class="row"><span>STATUS</span><b>{{ tip.text }}</b></div>
+      <div class="row"><span>SYMBOL</span><b>{{ meta.sym }}</b></div>
+    </div>
+  </section>
+
+  <!-- ═══════════ BALANCE ═══════════ -->
+  <section class="panel" id="balancePanel">
+    <div class="bp-head">
+      <span class="bp-title">BALANCE <em>- DAY {{ meta.day }} - GAINS</em></span>
+      <span class="bp-sub">{{ balanceSub }}</span>
+      <span class="bp-timer">{{ uptimeLabel }}</span>
+      <span class="bp-eq" :class="{neg: equity.equity < equity.start}">{{ usd(equity.equity) }}</span>
+    </div>
+    <canvas id="balanceChart" ref="balanceCv"></canvas>
+  </section>
+
+  <!-- ═══════════ 底部两联 ═══════════ -->
+  <section id="bottomRow">
+    <div class="panel" id="analysisPanel">
+      <div class="p-head">
+        <span class="p-title">JEV - ANALYSIS</span>
+        <span class="p-sub">{{ meta.sym }} · 1m</span>
+        <span class="p-right">{{ meta.signals }} SIGNALS</span>
+      </div>
+      <div class="ana-body">
+        <div class="ana-ind">
+          <div v-for="i in indicators" :key="i.k">{{ i.k }}<b :class="i.cls">{{ i.v }}</b></div>
+        </div>
+        <canvas id="klineChart" ref="klineCv"></canvas>
+      </div>
+    </div>
+
+    <div class="panel" id="strategyPanel">
+      <div class="p-head">
+        <span class="p-title">ShuttleBy_JEV</span>
+        <span class="p-sub">PAPER · SQLITE</span>
+        <span class="p-right">KILLED FUNDING 740,437</span>
+      </div>
+      <div class="strat-body">
+        <div class="strat-params">
+          <div v-for="p in params" :key="p.k">{{ p.k }}<b :class="p.cls">{{ p.v }}</b></div>
+        </div>
+        <div class="strat-log" ref="logEl">
+          <div class="ln" v-for="l in logs" :key="l.id">
+            <span class="t">{{ l.t }}</span> <span class="bot">{{ l.bot }}</span>
+            <span :class="l.cls" v-html="l.msg"></span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+</div>
+</div>
+
+<script src="assets/vendor/vue.global.prod.js"></script>
+<script src="assets/vendor/three.min.js"></script>
+<script src="assets/js/charts.js"></script>
+<script src="assets/js/scene3d.js"></script>
+<script src="assets/js/app.js"></script>
+</body>
+</html>
