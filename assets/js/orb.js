@@ -43,7 +43,7 @@
 
   /* ---- 金色粒子球 ---- */
   const P = [];
-  const NP = 9000;
+  const NP = 6200;
   for (let i = 0; i < NP; i++) {
     const u = Math.random() * 2 - 1;
     const th = Math.random() * Math.PI * 2;
@@ -158,8 +158,33 @@
       c.fillStyle = p.g
         ? 'rgba(255,236,180,' + (a * tw) + ')'
         : 'rgba(230,207,152,' + (a * .85 * tw) + ')';
-      const s = p.s * persp * 2.7;
+      const s = p.s * persp * 2.3;
       c.beginPath(); c.arc(px, py, Math.max(.5, s), 0, 7); c.fill();
+    }
+
+    /* 邻近粒子星座连线（只取采样，控制开销） */
+    c.strokeStyle = 'rgba(230,207,152,.16)';
+    c.lineWidth = 0.7;
+    const SAMPLE = [];
+    for (let i = 0; i < NP; i += 21) {
+      const p = P[i];
+      let x = p.x * ca - p.z * sa;
+      let z = p.x * sa + p.z * ca;
+      const y = p.y * cb - z * sb;
+      z = p.y * sb + z * cb;
+      const persp = 1 / (1.9 - z * .55);
+      SAMPLE.push([ox + x * R * persp * 1.25, oy + y * R * persp * 1.25]);
+    }
+    for (let i = 0; i < SAMPLE.length; i++) {
+      for (let j = i + 1; j < Math.min(SAMPLE.length, i + 7); j++) {
+        const dx = SAMPLE[i][0] - SAMPLE[j][0], dy = SAMPLE[i][1] - SAMPLE[j][1];
+        if (dx * dx + dy * dy < 4200) {
+          c.beginPath();
+          c.moveTo(SAMPLE[i][0], SAMPLE[i][1]);
+          c.lineTo(SAMPLE[j][0], SAMPLE[j][1]);
+          c.stroke();
+        }
+      }
     }
 
     RINGS.forEach(rg => {

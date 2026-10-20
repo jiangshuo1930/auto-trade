@@ -50,11 +50,11 @@
   const DOCKS = {
     core:   { x: 0.130 * STAGE_W, y: 0.135 * STAGE_H, sel: '#pnCore' },
     life:   { x: 0.400 * STAGE_W, y: 0.085 * STAGE_H, sel: '#pnLife' },
-    ent:    { x: 0.850 * STAGE_W, y: 0.130 * STAGE_H, sel: '#pnEnt' },
+    ent:    { x: 0.849 * STAGE_W, y: 0.129 * STAGE_H, sel: '#pnEnt' },
     curve:  { x: 0.570 * STAGE_W, y: 0.215 * STAGE_H, sel: '#pnCurve' },
-    orbL:   { x: 0.100 * STAGE_W, y: 0.490 * STAGE_H, sel: '#pnOrb' },
+    orbL:   { x: 0.072 * STAGE_W, y: 0.486 * STAGE_H, sel: '#pnOrb' },
     orbC:   { x: 0.550 * STAGE_W, y: 0.365 * STAGE_H, sel: '#pnOrb' },
-    stack:  { x: 0.840 * STAGE_W, y: 0.485 * STAGE_H, sel: '#pnStack' },
+    stack:  { x: 0.822 * STAGE_W, y: 0.479 * STAGE_H, sel: '#pnStack' },
     agents: { x: 0.360 * STAGE_W, y: 0.860 * STAGE_H, sel: '#pnAgents' },
     state:  { x: 0.720 * STAGE_W, y: 0.855 * STAGE_H, sel: '#pnState' },
   };

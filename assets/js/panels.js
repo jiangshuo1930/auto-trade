@@ -169,10 +169,11 @@
     const cv = $('entCv');
     let s = A.fitCanvas(cv);
     window.addEventListener('resize', () => { s = A.fitCanvas(cv); });
-    const LABELS = ['$TURJET', '$PELOSA-B7', '$SLIK', '$TONDOG', '$STONDOG', '$MENOL'];
+    const LABELS = ['$TURJET', '$PELOSA-B7', '$SLIK', '$TONDOG', '$STONDOG', '$MENOL',
+      '$ZAPMAX', '$RIZRAT', '$FLUPUP', '$DONBIT', '$SHOPOWL', '$HOGOWL'];
     const clusters = Array.from({ length: 4 }, (_, i) => ({
       a: i / 4 * Math.PI * 2 + 0.4, d: 0.42 + (i % 2) * 0.2, r: 0.20 + (i % 2) * 0.08,
-      n: 46 + ri(0, 30), sp: rf(-.05, .05),
+      n: 110 + ri(0, 70), sp: rf(-.05, .05),
     }));
     const nodes = LABELS.map((nm, i) => ({
       nm, ci: i % clusters.length, a: Math.random() * 7, d: .45 + Math.random() * .55,
@@ -181,7 +182,7 @@
     const edges = [];
     for (let i = 0; i < nodes.length; i++)
       for (let j = i + 1; j < nodes.length; j++)
-        if (Math.random() < .62) edges.push({ i, j, c: Math.random() < .62 ? '#ff7385' : '#c3bcf2', ph: Math.random() * 7 });
+        if (Math.random() < .78) edges.push({ i, j, c: Math.random() < .68 ? '#ff7385' : '#c3bcf2', ph: Math.random() * 7 });
     (function draw(now) {
       const t = now / 1000, c = s.c, w = s.w, h = s.h;
       const cx = w * .5, cy = h * .46, R = Math.min(w, h) * .46;
@@ -228,9 +229,9 @@
           const rr = Math.pow((k * 7919 % 100) / 100, .62) * cl.r * R;
           const x = ox + Math.cos(a) * rr, y = oy + Math.sin(a * 1.3) * rr * .92;
           const isW = k % 5 === 0;
-          c.fillStyle = isW ? 'rgba(255,115,133,.85)' : 'rgba(232,238,232,.6)';
-          c.globalAlpha = .28 + .5 * Math.abs(Math.sin(t * 1.6 + k));
-          c.beginPath(); c.arc(x, y, isW ? 1.5 : .9, 0, 7); c.fill();
+          c.fillStyle = isW ? 'rgba(255,130,146,.95)' : 'rgba(236,242,236,.85)';
+          c.globalAlpha = .45 + .5 * Math.abs(Math.sin(t * 1.6 + k));
+          c.beginPath(); c.arc(x, y, isW ? 2.0 : 1.35, 0, 7); c.fill();
         }
       }
       c.globalAlpha = 1;
@@ -239,7 +240,7 @@
       for (const e of edges) {
         const p1 = pos[e.i], p2 = pos[e.j];
         c.strokeStyle = e.c;
-        c.globalAlpha = .30 + .35 * Math.abs(Math.sin(t * .8 + e.ph));
+        c.globalAlpha = .42 + .40 * Math.abs(Math.sin(t * .8 + e.ph));
         c.lineWidth = 1;
         c.beginPath(); c.moveTo(p1.x, p1.y); c.lineTo(p2.x, p2.y); c.stroke();
         /* 流动光点 */
@@ -252,7 +253,7 @@
       c.globalAlpha = 1;
 
       /* 节点 + 标签 */
-      c.font = '11px Consolas';
+      c.font = '11.5px Consolas';
       nodes.forEach((n, i) => {
         const p = pos[i];
         const pl = .5 + .5 * Math.sin(t * 2 + n.ph);
@@ -285,7 +286,7 @@
         const y = AX.t + ih * i / 4;
         c.beginPath(); c.moveTo(AX.l, y); c.lineTo(AX.l + iw, y); c.stroke();
       }
-      c.fillStyle = 'rgba(110,120,110,.85)'; c.font = '11px Consolas';
+      c.fillStyle = 'rgba(96,106,96,.75)'; c.font = '10.5px Consolas';
       c.fillText('160K', 4, AX.t + 4);
       c.fillText('140K', 4, AX.t + ih / 2 + 4);
       c.fillText('120K', 4, AX.t + ih + 4);
@@ -298,8 +299,8 @@
         const px = AX.l + x * iw, py = AX.t + (1 - y) * ih;
         i ? c.lineTo(px, py) : c.moveTo(px, py);
       }
-      c.strokeStyle = '#5fcf9e'; c.lineWidth = 1.5;
-      c.shadowColor = 'rgba(107,227,173,.45)'; c.shadowBlur = 6;
+      c.strokeStyle = 'rgba(95,207,158,.85)'; c.lineWidth = 1.3;
+      c.shadowColor = 'rgba(107,227,173,.30)'; c.shadowBlur = 4;
       c.stroke();
       c.shadowBlur = 0;
       c.lineTo(AX.l + iw, AX.t + ih); c.lineTo(AX.l, AX.t + ih); c.closePath();
@@ -309,7 +310,7 @@
 
       /* 入场标记 */
       const ex = .16, epx = AX.l + ex * iw, epy = AX.t + (1 - fy(ex)) * ih;
-      c.strokeStyle = 'rgba(195,188,242,.7)'; c.setLineDash([3, 4]);
+      c.strokeStyle = 'rgba(195,188,242,.45)'; c.setLineDash([3, 4]);
       c.beginPath(); c.moveTo(epx, epy); c.lineTo(epx, AX.t + ih); c.stroke();
       c.beginPath(); c.moveTo(epx, epy); c.lineTo(AX.l, epy); c.stroke();
       c.setLineDash([]);

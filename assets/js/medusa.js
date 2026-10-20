@@ -39,7 +39,7 @@
     ctx.lineCap = 'round';
     ctx.lineJoin = 'round';
 
-    const bellW = W, bellH = W * 0.54;         // 矮胖钟形
+    const bellW = W, bellH = W * 0.58;         // 钟形（实测 高:宽 ≈ 1.4:1）
     const topY = -bellH * 0.86;
     const rimY = bellH * 0.10;
     const coreH = bellH * 0.42;
@@ -49,15 +49,15 @@
     function yAt(f) { return topY + (rimY - topY) * f; }
 
     /* ---------- 1. 触手：分节机械臂（先画） ---------- */
-    const NT = 10;
+    const NT = 14;
     o.ends = o.ends || [];
     const baseY = rimY + coreH;
     for (let i = 0; i < NT; i++) {
       const u = i / (NT - 1) - 0.5;
       const bx = u * bellW * 0.26;
       const by = baseY - Math.abs(u) * bellW * 0.03;
-      const len = bellW * (0.92 - Math.abs(u) * 0.26);
-      const segs = 4;
+      const len = bellW * (0.66 - Math.abs(u) * 0.18);
+      const segs = 5;
       const segLen = len / segs;
       const ph = i * 0.7 + seed;
       const sway = Math.sin(t * 1.25 + ph) * 0.055 + Math.sin(t * 2.1 + ph * 1.6) * 0.022;
@@ -65,14 +65,15 @@
       let px = bx, py = by;
 
       ctx.strokeStyle = 'rgba(226,236,232,' + (0.86 * glow) + ')';
-      ctx.lineWidth = Math.max(2.0, bellW * 0.026);
+      ctx.lineWidth = Math.max(1.8, bellW * 0.025);
       for (let sIdx = 0; sIdx < segs; sIdx++) {
-        ang += sway * (sIdx + 1) * 0.30 + bend * (sIdx + 1) * 0.22 + u * 0.10;
+        ang += sway * (sIdx + 1) * 0.30 + bend * (sIdx + 1) * 0.22 + u * 0.10
+             + (sIdx === segs - 1 ? (u >= 0 ? -0.42 : 0.42) : 0);
         const nx = px + Math.cos(ang) * segLen;
         const ny = py + Math.sin(ang) * segLen;
         /* 管身 */
         ctx.strokeStyle = 'rgba(222,232,228,' + ((0.80 - sIdx * 0.09) * glow) + ')';
-        ctx.lineWidth = Math.max(1.8, bellW * (0.028 - sIdx * 0.0035));
+        ctx.lineWidth = Math.max(1.5, bellW * (0.026 - sIdx * 0.0028));
         ctx.beginPath(); ctx.moveTo(px, py); ctx.lineTo(nx, ny); ctx.stroke();
         /* 亮边 */
         ctx.strokeStyle = 'rgba(255,255,255,' + ((0.42 - sIdx * 0.06) * glow) + ')';
@@ -82,13 +83,21 @@
         ctx.lineTo(nx + Math.cos(ang - 1.57) * bellW * 0.009, ny + Math.sin(ang - 1.57) * bellW * 0.009);
         ctx.stroke();
         /* 关节球 */
-        ctx.fillStyle = 'rgba(246,250,248,' + (0.90 * glow) + ')';
-        ctx.beginPath(); ctx.arc(nx, ny, Math.max(1.6, bellW * (0.019 - sIdx * 0.0022)), 0, 7); ctx.fill();
+        ctx.fillStyle = 'rgba(246,250,248,' + (0.92 * glow) + ')';
+        ctx.beginPath(); ctx.arc(nx, ny, Math.max(2.0, bellW * (0.023 - sIdx * 0.0024)), 0, 7); ctx.fill();
+        /* 关节横向短杠 */
+        const jw = Math.max(3.4, bellW * (0.040 - sIdx * 0.005));
+        ctx.strokeStyle = 'rgba(255,255,255,' + ((0.55 - sIdx * 0.08) * glow) + ')';
+        ctx.lineWidth = Math.max(1.4, bellW * 0.011);
+        ctx.beginPath();
+        ctx.moveTo(nx + Math.cos(ang - 1.57) * jw, ny + Math.sin(ang - 1.57) * jw);
+        ctx.lineTo(nx - Math.cos(ang - 1.57) * jw, ny - Math.sin(ang - 1.57) * jw);
+        ctx.stroke();
         px = nx; py = ny;
       }
 
       /* 末端方形数据接口 */
-      const sq = Math.max(5, bellW * 0.072);
+      const sq = Math.max(4.5, bellW * 0.062);
       const g2 = ctx.createRadialGradient(px, py, 0, px, py, sq * 2.1);
       g2.addColorStop(0, 'rgba(255,255,255,' + (0.55 * glow) + ')');
       g2.addColorStop(0.5, 'rgba(230,207,152,' + (0.22 * glow) + ')');
@@ -111,7 +120,7 @@
     }
 
     /* ---------- 2. 中心核心：垂直圆柱 ---------- */
-    const coreW = bellW * 0.15;
+    const coreW = bellW * 0.19;
     const coreG = ctx.createLinearGradient(-coreW, 0, coreW, 0);
     coreG.addColorStop(0, 'rgba(120,132,130,' + (0.55 * glow) + ')');
     coreG.addColorStop(0.35, 'rgba(226,236,232,' + (0.85 * glow) + ')');
@@ -127,6 +136,13 @@
     ctx.strokeStyle = 'rgba(255,255,255,' + (0.40 * glow) + ')';
     ctx.lineWidth = 1;
     ctx.stroke();
+    /* 核心横向分层 */
+    for (let r = 0; r <= 3; r++) {
+      const yy = rimY - bellH * 0.04 + (baseY - rimY + bellH * 0.04) * r / 3;
+      ctx.strokeStyle = 'rgba(255,255,255,' + ((0.46 - r * 0.07) * glow) + ')';
+      ctx.lineWidth = r === 0 || r === 3 ? 2.2 : 1.5;
+      ctx.beginPath(); ctx.ellipse(0, yy, coreW * (1 - r * 0.03), coreW * 0.30, 0, 0, 7); ctx.stroke();
+    }
     /* 核心环 */
     for (let r = 1; r <= 2; r++) {
       const yy = rimY + (baseY - rimY) * r / 3;
@@ -147,9 +163,10 @@
     ctx.bezierCurveTo(bellW * 0.30, rimY + bellH * 0.20, -bellW * 0.30, rimY + bellH * 0.20, -bellW * 0.5, rimY);
     ctx.closePath();
     const fill = ctx.createLinearGradient(0, topY, 0, rimY);
-    fill.addColorStop(0, 'rgba(226,240,238,' + (0.24 * glow) + ')');
-    fill.addColorStop(0.55, 'rgba(170,190,188,' + (0.14 * glow) + ')');
-    fill.addColorStop(1, 'rgba(110,130,130,' + (0.08 * glow) + ')');
+    fill.addColorStop(0, 'rgba(238,248,246,' + (0.52 * glow) + ')');
+    fill.addColorStop(0.42, 'rgba(196,212,210,' + (0.34 * glow) + ')');
+    fill.addColorStop(0.78, 'rgba(140,158,158,' + (0.20 * glow) + ')');
+    fill.addColorStop(1, 'rgba(96,114,114,' + (0.12 * glow) + ')');
     ctx.fillStyle = fill;
     ctx.fill();
 
@@ -159,13 +176,13 @@
       const f = FR[r];
       const yy = yAt(f), hw = hwAt(f);
       ctx.strokeStyle = 'rgba(255,255,255,' + ((0.46 + r * 0.07) * glow) + ')';
-      ctx.lineWidth = r === FR.length - 1 ? 2.0 : 1.2;
+      ctx.lineWidth = r === FR.length - 1 ? 3.2 : 2.3;
       ctx.beginPath();
       ctx.ellipse(0, yy, hw, hw * 0.17, 0, 0, Math.PI);
       ctx.stroke();
       /* 环带下沿阴影 */
-      ctx.strokeStyle = 'rgba(60,74,72,' + (0.35 * glow) + ')';
-      ctx.lineWidth = 1;
+      ctx.strokeStyle = 'rgba(28,38,38,' + (0.60 * glow) + ')';
+      ctx.lineWidth = 2.4;
       ctx.beginPath();
       ctx.ellipse(0, yy + hw * 0.055, hw * 0.985, hw * 0.16, 0, 0, Math.PI);
       ctx.stroke();
@@ -201,6 +218,18 @@
     ctx.ellipse(-bellW * 0.10, topY + bellH * 0.60, bellW * 0.075, bellW * 0.024, -0.34, 0, 7);
     ctx.fill();
 
+    /* 强弧形高光（左上） */
+    ctx.strokeStyle = 'rgba(255,255,255,' + (0.55 * glow) + ')';
+    ctx.lineWidth = Math.max(2.2, bellW * 0.030);
+    ctx.beginPath();
+    ctx.ellipse(-bellW * 0.06, rimY, bellW * 0.44, bellH * 0.92, 0, Math.PI * 1.12, Math.PI * 1.62);
+    ctx.stroke();
+    ctx.strokeStyle = 'rgba(255,255,255,' + (0.22 * glow) + ')';
+    ctx.lineWidth = Math.max(1.4, bellW * 0.016);
+    ctx.beginPath();
+    ctx.ellipse(bellW * 0.10, rimY, bellW * 0.40, bellH * 0.86, 0, Math.PI * 1.70, Math.PI * 1.94);
+    ctx.stroke();
+
     /* 轮廓 + 边缘光 */
     const rim = ctx.createLinearGradient(-bellW * 0.5, 0, bellW * 0.5, 0);
     rim.addColorStop(0, 'rgba(172,214,232,.95)');
@@ -232,12 +261,14 @@
   /* ============================================================
      航线：8 个停靠点（视频中出现的停靠位置）
      ============================================================ */
-  const ROUTES = [
-    ['ent', 'orbC', 'stack', 'orbC'],
-    ['core', 'orbL', 'life', 'orbC'],
-    ['stack', 'orbC', 'agents', 'orbC'],
-    ['curve', 'orbC', 'state', 'orbC'],
+  const PREFS = [
+    ['ent', 'stack', 'orbC', 'life', 'core', 'orbL'],
+    ['core', 'orbL', 'curve', 'orbC', 'agents', 'life'],
+    ['stack', 'orbC', 'state', 'ent', 'curve', 'orbC'],
+    ['agents', 'orbC', 'life', 'curve', 'state', 'orbL'],
   ];
+  /* 停靠点预订表：同一时刻一个停靠点只停一只 */
+  const OCCUPIED = {};
 
   const NAME = ['MEDUSA-01', 'MEDUSA-02', 'MEDUSA-03', 'MEDUSA-04'];
   const TOK = A.TOKENS;
@@ -249,9 +280,10 @@
     constructor(i) {
       this.i = i;
       this.name = NAME[i];
-      this.route = ROUTES[i];
-      this.ri = 0;
-      this.w = [206, 178, 232, 166][i];
+      this.prefs = PREFS[i];
+      this.pi = 0;
+      this.route = this.prefs;
+      this.w = [200, 176, 210, 168][i];
       this.seed = i * 2.1;
       this.pos = { x: DOCKS[this.route[0]].x + rf(-40, 40), y: DOCKS[this.route[0]].y + rf(-40, 40) };
       this.vel = { x: 0, y: 0 };
@@ -267,6 +299,9 @@
       this.chip.className = 'mchip';
       chipLayer.appendChild(this.chip);
       this.setChip('SEEK');
+      this.dockKey = this.prefs[0];
+      OCCUPIED[this.prefs[0]] = i;
+      this.wait = rf(0.2, 3.0);
       this.planNext();
     }
 
@@ -275,24 +310,36 @@
       this.chip.className = 'mchip' + (st === 'CARRY' ? ' carry' : st === 'GRAB' ? ' grab' : st === 'READ' ? ' read' : '');
     }
 
-    /* 规划下一段：当前所在停靠点 → 下一个停靠点 */
+    /* 规划下一段：从偏好序列里挑一个"没被别的水母占用"的停靠点 */
     planNext() {
-      const hereKey = this.route[this.ri % this.route.length];
-      this.ri++;
-      const nextKey = this.route[this.ri % this.route.length];
+      const hereKey = this.dockKey || this.prefs[0];
+      let nextKey = null;
+      for (let k = 0; k < this.prefs.length; k++) {
+        const cand = this.prefs[(this.pi + k) % this.prefs.length];
+        if (cand === hereKey) continue;
+        if (OCCUPIED[cand] && OCCUPIED[cand] !== this.i) continue;
+        nextKey = cand;
+        this.pi = (this.pi + k + 1) % this.prefs.length;
+        break;
+      }
+      if (!nextKey) nextKey = this.prefs[(this.pi = (this.pi + 1) % this.prefs.length)];
+
+      /* 释放旧停靠点，预订新停靠点 */
+      if (OCCUPIED[hereKey] === this.i) delete OCCUPIED[hereKey];
+      OCCUPIED[nextKey] = this.i;
+
       this.srcKey = hereKey;
       this.dstKey = nextKey;
       this.from = { x: this.pos.x, y: this.pos.y };
       this.to = { x: DOCKS[nextKey].x, y: DOCKS[nextKey].y };
-      /* 弧线：中点向垂直方向偏移，避免贴着面板直飞 */
       const mx = (this.from.x + this.to.x) / 2, my = (this.from.y + this.to.y) / 2;
       const dx = this.to.x - this.from.x, dy = this.to.y - this.from.y;
       const L = Math.hypot(dx, dy) || 1;
       const side = (this.i % 2 ? 1 : -1);
-      const bow = Math.min(320, L * 0.34) * side;
+      const bow = Math.min(300, L * 0.32) * side;
       this.ctrl = { x: mx - dy / L * bow, y: my + dx / L * bow };
       this.t = 0;
-      this.dur = clamp(L / 210, 1.1, 4.2);
+      this.dur = clamp(L / 215, 1.1, 4.2);
       this.state = 'seek';
       this.setChip('SEEK');
     }
@@ -314,6 +361,12 @@
       const st = this.state;
 
       if (st === 'seek') {
+        if (this.wait > 0) {
+          this.wait -= dt;
+          this.pos.x += Math.sin(t * 0.9 + this.seed) * 9 * dt;
+          this.pos.y += Math.cos(t * 1.1 + this.seed) * 12 * dt;
+          this.t = 0;
+        } else {
         this.t = Math.min(1, this.t + dt / this.dur);
         const e = easeInOut(this.t);
         const nx = quad(this.from.x, this.ctrl.x, this.to.x, e);
@@ -323,11 +376,13 @@
         this.pos.x = nx; this.pos.y = ny;
         if (this.t >= 1) {
           this.state = 'grab'; this.timer = 0; this.beam = 1;
+          this.dockKey = this.dstKey;
           this.setChip('GRAB');
           this.spawnCubes(ri(3, 5));
           flashPanel(this.dstKey);
           this.readMax = rf(4, 18);
           this.readVal = 0;
+        }
         }
       } else if (st === 'grab') {
         /* 停在停靠点，数据块从面板数据口"吸"到触手末端 */
@@ -508,6 +563,18 @@
 
   /* ---------- 启动 ---------- */
   const medusas = [0, 1, 2, 3].map(i => new Medusa(i));
+
+  /* ?warp=N —— 启动时快进 N 秒（调试/截图用） */
+  (function warp() {
+    const m = /[?&]warp=(\d+(?:\.\d+)?)/.exec(location.search);
+    if (!m) return;
+    const secs = Math.min(600, parseFloat(m[1]) || 0);
+    const step = 1 / 30;
+    for (let k = 0; k < secs / step; k++) {
+      const tt = k * step;
+      for (const md of medusas) md.update(step, tt);
+    }
+  })();
 
   let last = performance.now();
   (function loop(now) {
