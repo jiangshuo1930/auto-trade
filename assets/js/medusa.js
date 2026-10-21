@@ -30,225 +30,347 @@
   /* ============================================================
      绘制：单只 MEDUSA（局部坐标，原点=伞盖中心）
      ============================================================ */
+  /* ------------------------------------------------------------
+     机械乌贼 / Sentinel 造型
+     头部：实心金属钟罩（横向环箍 + 纵向装甲缝 + 镜面高光 + 边缘光）
+     颈部：6 枚红色传感器阵列
+     触手：8 根分节机械臂，上粗下细，末端分叉钩爪 + 发光节点
+     ------------------------------------------------------------ */
   function drawMedusa(ctx, W, t, o) {
-    const bend = o.bend || 0;
+    const bend = o.bend || 0;             // 速度引起的向后拖曳
     const glow = o.glow === undefined ? 1 : o.glow;
     const seed = o.seed || 0;
+    const active = o.active || 0;         // 0..1 传感器亮度
 
     ctx.save();
     ctx.lineCap = 'round';
     ctx.lineJoin = 'round';
 
-    const bellW = W, bellH = W * 0.58;         // 钟形（实测 高:宽 ≈ 1.4:1）
-    const topY = -bellH * 0.86;
-    const rimY = bellH * 0.10;
-    const coreH = bellH * 0.42;
+    const bellW = W;
+    const bellH = W * 0.62;               // 钟罩高（扁钟罩）
+    const rimY = bellH * 0.34;            // 钟罩下沿
+    const topY = -bellH * 0.78;
 
-    /* 伞盖在某高度处的半宽 */
-    function hwAt(f) { return bellW * 0.5 * Math.sqrt(Math.max(0, 1 - (1 - f) * (1 - f))); }
-    function yAt(f) { return topY + (rimY - topY) * f; }
-
-    /* ---------- 1. 触手：分节机械臂（先画） ---------- */
-    const NT = 14;
+    /* ================= 1. 触手（在头后面） ================= */
+    const NT = 8;
+    const segs = 10;
     o.ends = o.ends || [];
-    const baseY = rimY + coreH;
-    for (let i = 0; i < NT; i++) {
-      const u = i / (NT - 1) - 0.5;
-      const bx = u * bellW * 0.26;
-      const by = baseY - Math.abs(u) * bellW * 0.03;
-      const len = bellW * (0.66 - Math.abs(u) * 0.18);
-      const segs = 5;
-      const segLen = len / segs;
-      const ph = i * 0.7 + seed;
-      const sway = Math.sin(t * 1.25 + ph) * 0.055 + Math.sin(t * 2.1 + ph * 1.6) * 0.022;
-      let ang = Math.PI / 2 + u * 0.85;
-      let px = bx, py = by;
+    const rootY = rimY + bellH * 0.10;
 
-      ctx.strokeStyle = 'rgba(226,236,232,' + (0.86 * glow) + ')';
-      ctx.lineWidth = Math.max(1.8, bellW * 0.025);
-      for (let sIdx = 0; sIdx < segs; sIdx++) {
-        ang += sway * (sIdx + 1) * 0.30 + bend * (sIdx + 1) * 0.22 + u * 0.10
-             + (sIdx === segs - 1 ? (u >= 0 ? -0.42 : 0.42) : 0);
-        const nx = px + Math.cos(ang) * segLen;
-        const ny = py + Math.sin(ang) * segLen;
-        /* 管身 */
-        ctx.strokeStyle = 'rgba(222,232,228,' + ((0.80 - sIdx * 0.09) * glow) + ')';
-        ctx.lineWidth = Math.max(1.5, bellW * (0.026 - sIdx * 0.0028));
-        ctx.beginPath(); ctx.moveTo(px, py); ctx.lineTo(nx, ny); ctx.stroke();
-        /* 亮边 */
-        ctx.strokeStyle = 'rgba(255,255,255,' + ((0.42 - sIdx * 0.06) * glow) + ')';
-        ctx.lineWidth = Math.max(0.8, bellW * 0.008);
+    for (let i = 0; i < NT; i++) {
+      const u = i / (NT - 1) - 0.5;                       // -0.5 .. 0.5
+      const bx = u * bellW * 0.84;
+      const by = rootY - Math.abs(u) * bellW * 0.02;
+      const len = bellW * (1.95 - Math.abs(u) * 0.42);     // 触手长度
+      const ph = i * 0.68 + seed;
+      const sway = Math.sin(t * 1.15 + ph) * 0.075 + Math.sin(t * 2.05 + ph * 1.7) * 0.030;
+
+      /* 贝塞尔控制点：向外散开 + 向后拖曳 */
+      const spread = u * bellW * 0.62;
+      const c1x = bx + spread * 0.45 + sway * bellW * 0.30 + bend * bellW * 0.22;
+      const c1y = by + len * 0.34;
+      const c2x = bx + spread * 1.05 + sway * bellW * 0.85 + bend * bellW * 0.55;
+      const c2y = by + len * 0.72;
+      const ex = bx + spread * 1.35 + sway * bellW * 1.20 + bend * bellW * 0.80;
+      const ey = by + len;
+
+      /* --- 锥形主体：采样成多边形 --- */
+      const N = 20;
+      const Lp = [], Rp = [];
+      const w0 = bellW * 0.034, wTip = bellW * 0.002;
+      for (let k = 0; k <= N; k++) {
+        const tt = k / N;
+        const px = cubic(bx, c1x, c2x, ex, tt);
+        const py = cubic(by, c1y, c2y, ey, tt);
+        const dx = cubic(bx, c1x, c2x, ex, Math.min(1, tt + 0.01)) - px;
+        const dy = cubic(by, c1y, c2y, ey, Math.min(1, tt + 0.01)) - py;
+        const dl = Math.hypot(dx, dy) || 1;
+        const nx = -dy / dl, ny = dx / dl;
+        const ww = w0 * Math.pow(1 - tt, 1.50) + wTip;
+        Lp.push([px + nx * ww, py + ny * ww]);
+        Rp.push([px - nx * ww, py - ny * ww]);
+      }
+      ctx.beginPath();
+      ctx.moveTo(Lp[0][0], Lp[0][1]);
+      for (let k = 1; k <= N; k++) ctx.lineTo(Lp[k][0], Lp[k][1]);
+      for (let k = N; k >= 0; k--) ctx.lineTo(Rp[k][0], Rp[k][1]);
+      ctx.closePath();
+      const tg = ctx.createLinearGradient(bx - w0, by, bx + w0, ey);
+      tg.addColorStop(0, 'rgba(255,255,255,' + (0.98 * glow) + ')');
+      tg.addColorStop(0.32, 'rgba(196,208,204,' + (0.94 * glow) + ')');
+      tg.addColorStop(0.72, 'rgba(112,124,122,' + (0.86 * glow) + ')');
+      tg.addColorStop(1, 'rgba(34,42,42,' + (0.88 * glow) + ')');
+      ctx.fillStyle = tg;
+      ctx.fill();
+
+      /* --- 亮边（左上受光） --- */
+      ctx.beginPath();
+      for (let k = 0; k <= N; k++) k ? ctx.lineTo(Lp[k][0], Lp[k][1]) : ctx.moveTo(Lp[0][0], Lp[0][1]);
+      ctx.strokeStyle = 'rgba(255,255,255,' + (0.55 * glow) + ')';
+      ctx.lineWidth = Math.max(0.8, bellW * 0.008);
+      ctx.stroke();
+
+      /* --- 分节：关节环 --- */
+      for (let sIdx = 1; sIdx < segs; sIdx++) {
+        const tt = sIdx / segs;
+        const px = cubic(bx, c1x, c2x, ex, tt);
+        const py = cubic(by, c1y, c2y, ey, tt);
+        const dx = cubic(bx, c1x, c2x, ex, Math.min(1, tt + 0.01)) - px;
+        const dy = cubic(by, c1y, c2y, ey, Math.min(1, tt + 0.01)) - py;
+        const dl = Math.hypot(dx, dy) || 1;
+        const nx = -dy / dl, ny = dx / dl;
+        const ww = (w0 * Math.pow(1 - tt, 1.50) + wTip) * 1.42;
+        const ang2 = Math.atan2(dy, dx);
+        /* 套管：短圆柱（两端略鼓），有厚度 */
+        ctx.save();
+        ctx.translate(px, py);
+        ctx.rotate(ang2);
+        const cw = ww * 1.55, ch = ww * 0.92;
+        const cg = ctx.createLinearGradient(0, -ch, 0, ch);
+        cg.addColorStop(0, 'rgba(244,250,246,' + (0.95 * glow) + ')');
+        cg.addColorStop(0.40, 'rgba(186,198,194,' + (0.95 * glow) + ')');
+        cg.addColorStop(1, 'rgba(62,72,72,' + (0.95 * glow) + ')');
+        ctx.fillStyle = cg;
         ctx.beginPath();
-        ctx.moveTo(px + Math.cos(ang - 1.57) * bellW * 0.011, py + Math.sin(ang - 1.57) * bellW * 0.011);
-        ctx.lineTo(nx + Math.cos(ang - 1.57) * bellW * 0.009, ny + Math.sin(ang - 1.57) * bellW * 0.009);
+        if (ctx.roundRect) ctx.roundRect(-cw * 0.5, -ch, cw, ch * 2, ch * 0.6);
+        else ctx.rect(-cw * 0.5, -ch, cw, ch * 2);
+        ctx.fill();
+        ctx.strokeStyle = 'rgba(20,26,26,' + (0.55 * glow) + ')';
+        ctx.lineWidth = Math.max(0.7, bellW * 0.005);
         ctx.stroke();
-        /* 关节球 */
-        ctx.fillStyle = 'rgba(246,250,248,' + (0.92 * glow) + ')';
-        ctx.beginPath(); ctx.arc(nx, ny, Math.max(2.0, bellW * (0.023 - sIdx * 0.0024)), 0, 7); ctx.fill();
-        /* 关节横向短杠 */
-        const jw = Math.max(3.4, bellW * (0.040 - sIdx * 0.005));
-        ctx.strokeStyle = 'rgba(255,255,255,' + ((0.55 - sIdx * 0.08) * glow) + ')';
-        ctx.lineWidth = Math.max(1.4, bellW * 0.011);
+        /* 套管两端的暗缝 */
+        ctx.strokeStyle = 'rgba(18,24,24,' + (0.7 * glow) + ')';
+        ctx.lineWidth = Math.max(0.9, bellW * 0.006);
         ctx.beginPath();
-        ctx.moveTo(nx + Math.cos(ang - 1.57) * jw, ny + Math.sin(ang - 1.57) * jw);
-        ctx.lineTo(nx - Math.cos(ang - 1.57) * jw, ny - Math.sin(ang - 1.57) * jw);
+        ctx.moveTo(-cw * 0.5, -ch); ctx.lineTo(-cw * 0.5, ch);
+        ctx.moveTo(cw * 0.5, -ch); ctx.lineTo(cw * 0.5, ch);
         ctx.stroke();
-        px = nx; py = ny;
+        ctx.restore();
       }
 
-      /* 末端方形数据接口 */
-      const sq = Math.max(4.5, bellW * 0.062);
-      const g2 = ctx.createRadialGradient(px, py, 0, px, py, sq * 2.1);
-      g2.addColorStop(0, 'rgba(255,255,255,' + (0.55 * glow) + ')');
-      g2.addColorStop(0.5, 'rgba(230,207,152,' + (0.22 * glow) + ')');
-      g2.addColorStop(1, 'rgba(230,207,152,0)');
-      ctx.fillStyle = g2;
-      ctx.beginPath(); ctx.arc(px, py, sq * 2.1, 0, 7); ctx.fill();
-      ctx.save();
-      ctx.translate(px, py);
-      ctx.rotate(ang - Math.PI / 2);
-      ctx.fillStyle = 'rgba(250,252,250,' + (0.96 * glow) + ')';
-      ctx.fillRect(-sq / 2, -sq / 2, sq, sq);
-      ctx.strokeStyle = 'rgba(255,255,255,' + (0.9 * glow) + ')';
-      ctx.lineWidth = 1;
-      ctx.strokeRect(-sq / 2, -sq / 2, sq, sq);
-      ctx.fillStyle = 'rgba(60,70,68,' + (0.85 * glow) + ')';
-      ctx.fillRect(-sq * 0.22, -sq * 0.22, sq * 0.44, sq * 0.44);
-      ctx.restore();
+      /* --- 末端：分叉钩爪 + 发光节点 --- */
+      const dxE = ex - cubic(bx, c1x, c2x, ex, 0.94);
+      const dyE = ey - cubic(by, c1y, c2y, ey, 0.94);
+      const aE = Math.atan2(dyE, dxE);
+      const hookL = bellW * 0.115;
+      ctx.strokeStyle = 'rgba(238,244,240,' + (0.92 * glow) + ')';
+      ctx.lineWidth = Math.max(1.3, bellW * 0.011);
+      for (const sgn of [-1, 1]) {
+        ctx.beginPath();
+        ctx.moveTo(ex, ey);
+        ctx.quadraticCurveTo(
+          ex + Math.cos(aE + sgn * 0.42) * hookL * 0.75,
+          ey + Math.sin(aE + sgn * 0.42) * hookL * 0.75,
+          ex + Math.cos(aE + sgn * 1.15) * hookL,
+          ey + Math.sin(aE + sgn * 1.15) * hookL);
+        ctx.stroke();
+      }
+      /* 末端尖刺（实心倒钩） */
+      ctx.fillStyle = 'rgba(240,246,242,' + (0.95 * glow) + ')';
+      ctx.beginPath();
+      ctx.moveTo(ex, ey);
+      ctx.lineTo(ex + Math.cos(aE + 0.30) * hookL * 1.55, ey + Math.sin(aE + 0.30) * hookL * 1.55);
+      ctx.lineTo(ex + Math.cos(aE - 0.30) * hookL * 0.55, ey + Math.sin(aE - 0.30) * hookL * 0.55);
+      ctx.closePath();
+      ctx.fill();
 
-      o.ends[i] = { x: px, y: py };
+      /* 末端发光节点 */
+      const nodeR = Math.max(2.2, bellW * 0.024);
+      const ng = ctx.createRadialGradient(ex, ey, 0, ex, ey, nodeR * 2.6);
+      ng.addColorStop(0, 'rgba(255,255,255,' + (0.85 * glow) + ')');
+      ng.addColorStop(0.4, 'rgba(255,70,90,' + (0.35 * (0.35 + 0.65 * active) * glow) + ')');
+      ng.addColorStop(1, 'rgba(255,70,90,0)');
+      ctx.fillStyle = ng;
+      ctx.beginPath(); ctx.arc(ex, ey, nodeR * 2.6, 0, 7); ctx.fill();
+      ctx.fillStyle = 'rgba(255,236,236,' + (0.9 * glow) + ')';
+      ctx.beginPath(); ctx.arc(ex, ey, nodeR * 0.62, 0, 7); ctx.fill();
+
+      o.ends[i] = { x: ex, y: ey };
     }
 
-    /* ---------- 2. 中心核心：垂直圆柱 ---------- */
-    const coreW = bellW * 0.19;
-    const coreG = ctx.createLinearGradient(-coreW, 0, coreW, 0);
-    coreG.addColorStop(0, 'rgba(120,132,130,' + (0.55 * glow) + ')');
-    coreG.addColorStop(0.35, 'rgba(226,236,232,' + (0.85 * glow) + ')');
-    coreG.addColorStop(1, 'rgba(96,108,106,' + (0.55 * glow) + ')');
-    ctx.fillStyle = coreG;
+    /* ================= 2. 颈部连接件 ================= */
+    const neckW = bellW * 0.30, neckH = bellH * 0.20;
+    const ng2 = ctx.createLinearGradient(-neckW, 0, neckW, 0);
+    ng2.addColorStop(0, 'rgba(210,218,214,' + (0.95 * glow) + ')');
+    ng2.addColorStop(0.45, 'rgba(120,132,130,' + (0.92 * glow) + ')');
+    ng2.addColorStop(1, 'rgba(44,52,52,' + (0.92 * glow) + ')');
+    ctx.fillStyle = ng2;
     ctx.beginPath();
-    ctx.moveTo(-coreW, rimY - bellH * 0.06);
-    ctx.lineTo(-coreW * 0.82, baseY);
-    ctx.lineTo(coreW * 0.82, baseY);
-    ctx.lineTo(coreW, rimY - bellH * 0.06);
+    ctx.moveTo(-neckW, rimY - bellH * 0.02);
+    ctx.lineTo(-neckW * 0.82, rootY);
+    ctx.lineTo(neckW * 0.82, rootY);
+    ctx.lineTo(neckW, rimY - bellH * 0.02);
     ctx.closePath();
     ctx.fill();
-    ctx.strokeStyle = 'rgba(255,255,255,' + (0.40 * glow) + ')';
+    ctx.strokeStyle = 'rgba(255,255,255,' + (0.35 * glow) + ')';
     ctx.lineWidth = 1;
     ctx.stroke();
-    /* 核心横向分层 */
-    for (let r = 0; r <= 3; r++) {
-      const yy = rimY - bellH * 0.04 + (baseY - rimY + bellH * 0.04) * r / 3;
-      ctx.strokeStyle = 'rgba(255,255,255,' + ((0.46 - r * 0.07) * glow) + ')';
-      ctx.lineWidth = r === 0 || r === 3 ? 2.2 : 1.5;
-      ctx.beginPath(); ctx.ellipse(0, yy, coreW * (1 - r * 0.03), coreW * 0.30, 0, 0, 7); ctx.stroke();
-    }
-    /* 核心环 */
-    for (let r = 1; r <= 2; r++) {
-      const yy = rimY + (baseY - rimY) * r / 3;
-      ctx.strokeStyle = 'rgba(255,255,255,' + ((0.30 - r * 0.06) * glow) + ')';
-      ctx.beginPath(); ctx.ellipse(0, yy, coreW * (1 - r * 0.06), coreW * 0.28, 0, 0, 7); ctx.stroke();
-    }
-    /* 底部基座环 */
-    ctx.strokeStyle = 'rgba(240,248,244,' + (0.55 * glow) + ')';
-    ctx.lineWidth = 1.4;
-    ctx.beginPath(); ctx.ellipse(0, baseY, coreW * 1.05, coreW * 0.34, 0, 0, 7); ctx.stroke();
 
-    /* ---------- 3. 伞盖：堆叠椭圆环 + 线框 ---------- */
-    /* 半透明填充 */
-    ctx.beginPath();
-    ctx.moveTo(-bellW * 0.5, rimY);
-    ctx.bezierCurveTo(-bellW * 0.50, topY + bellH * 0.06, -bellW * 0.24, topY, 0, topY);
-    ctx.bezierCurveTo(bellW * 0.24, topY, bellW * 0.50, topY + bellH * 0.06, bellW * 0.5, rimY);
-    ctx.bezierCurveTo(bellW * 0.30, rimY + bellH * 0.20, -bellW * 0.30, rimY + bellH * 0.20, -bellW * 0.5, rimY);
-    ctx.closePath();
-    const fill = ctx.createLinearGradient(0, topY, 0, rimY);
-    fill.addColorStop(0, 'rgba(238,248,246,' + (0.52 * glow) + ')');
-    fill.addColorStop(0.42, 'rgba(196,212,210,' + (0.34 * glow) + ')');
-    fill.addColorStop(0.78, 'rgba(140,158,158,' + (0.20 * glow) + ')');
-    fill.addColorStop(1, 'rgba(96,114,114,' + (0.12 * glow) + ')');
-    ctx.fillStyle = fill;
+    /* ================= 3. 头部：实心金属钟罩 ================= */
+    /* 外形 */
+    function headPath() {
+      ctx.beginPath();
+      ctx.moveTo(-bellW * 0.46, rimY);
+      ctx.bezierCurveTo(-bellW * 0.50, topY + bellH * 0.30, -bellW * 0.34, topY, 0, topY);
+      ctx.bezierCurveTo(bellW * 0.34, topY, bellW * 0.50, topY + bellH * 0.30, bellW * 0.46, rimY);
+      ctx.lineTo(-bellW * 0.46, rimY);
+      ctx.closePath();
+    }
+
+    /* 金属渐变填充 */
+    headPath();
+    const hg = ctx.createLinearGradient(-bellW * 0.42, topY, bellW * 0.42, rimY);
+    hg.addColorStop(0, 'rgba(255,255,255,' + glow + ')');
+    hg.addColorStop(0.20, 'rgba(238,246,242,' + (0.98 * glow) + ')');
+    hg.addColorStop(0.52, 'rgba(150,162,160,' + (0.97 * glow) + ')');
+    hg.addColorStop(0.82, 'rgba(58,68,68,' + (0.97 * glow) + ')');
+    hg.addColorStop(1, 'rgba(22,28,28,' + (0.97 * glow) + ')');
+    ctx.fillStyle = hg;
     ctx.fill();
 
-    /* 横向堆叠环（5 道，越往下越宽） */
-    const FR = [0.26, 0.46, 0.64, 0.82, 1.0];
-    for (let r = 0; r < FR.length; r++) {
-      const f = FR[r];
-      const yy = yAt(f), hw = hwAt(f);
-      ctx.strokeStyle = 'rgba(255,255,255,' + ((0.46 + r * 0.07) * glow) + ')';
-      ctx.lineWidth = r === FR.length - 1 ? 3.2 : 2.3;
-      ctx.beginPath();
-      ctx.ellipse(0, yy, hw, hw * 0.17, 0, 0, Math.PI);
-      ctx.stroke();
-      /* 环带下沿阴影 */
-      ctx.strokeStyle = 'rgba(28,38,38,' + (0.60 * glow) + ')';
-      ctx.lineWidth = 2.4;
-      ctx.beginPath();
-      ctx.ellipse(0, yy + hw * 0.055, hw * 0.985, hw * 0.16, 0, 0, Math.PI);
-      ctx.stroke();
+    /* 右半暗部（体积感） */
+    ctx.save();
+    headPath(); ctx.clip();
+    const sh = ctx.createLinearGradient(0, 0, bellW * 0.5, 0);
+    sh.addColorStop(0, 'rgba(0,0,0,0)');
+    sh.addColorStop(0.62, 'rgba(0,0,0,0)');
+    sh.addColorStop(1, 'rgba(0,0,0,.55)');
+    ctx.fillStyle = sh;
+    ctx.fillRect(-bellW * 0.5, topY, bellW, bellH * 1.2);
+
+    /* 径向明暗：左上亮、边缘暗 */
+    const rg2 = ctx.createRadialGradient(
+      -bellW * 0.18, topY + bellH * 0.20, bellW * 0.02,
+      -bellW * 0.05, topY + bellH * 0.42, bellW * 0.62);
+    rg2.addColorStop(0, 'rgba(255,255,255,.55)');
+    rg2.addColorStop(0.30, 'rgba(255,255,255,.10)');
+    rg2.addColorStop(0.62, 'rgba(0,0,0,.12)');
+    rg2.addColorStop(1, 'rgba(0,0,0,.74)');
+    ctx.fillStyle = rg2;
+    ctx.fillRect(-bellW * 0.5, topY, bellW, bellH * 1.2);
+
+    /* 底部阴影（下沿压暗） */
+    const bs = ctx.createLinearGradient(0, topY + bellH * 0.52, 0, rimY);
+    bs.addColorStop(0, 'rgba(0,0,0,0)');
+    bs.addColorStop(1, 'rgba(0,0,0,.58)');
+    ctx.fillStyle = bs;
+    ctx.fillRect(-bellW * 0.5, topY + bellH * 0.52, bellW, bellH * 0.6);
+
+    /* 顶部横向环箍（3 道深槽） */
+    for (let r = 0; r < 3; r++) {
+      const f = 0.22 + r * 0.24;
+      const yy = topY + bellH * f;
+      const hw2 = bellW * 0.5 * Math.sqrt(Math.max(0, 1 - Math.pow(1 - f * 1.35, 2))) * 0.98;
+      /* 深槽 */
+      ctx.strokeStyle = 'rgba(26,32,32,.85)';
+      ctx.lineWidth = Math.max(1.6, bellW * 0.016);
+      ctx.beginPath(); ctx.ellipse(0, yy, Math.max(4, hw2), hw2 * 0.15, 0, 0.02, Math.PI - 0.02); ctx.stroke();
+      /* 槽下高光 */
+      ctx.strokeStyle = 'rgba(255,255,255,.55)';
+      ctx.lineWidth = Math.max(1, bellW * 0.008);
+      ctx.beginPath(); ctx.ellipse(0, yy + bellW * 0.016, Math.max(4, hw2 * 0.99), hw2 * 0.15, 0, 0.02, Math.PI - 0.02); ctx.stroke();
     }
 
-    /* 纵向经线 */
-    ctx.strokeStyle = 'rgba(255,255,255,' + (0.20 * glow) + ')';
-    ctx.lineWidth = 0.9;
+    /* 下半部纵向装甲缝（6 条） */
     for (let m = -3; m <= 3; m++) {
-      const k = m / 3;
+      if (m === 0) continue;
+      const k = m / 3.4;
+      ctx.strokeStyle = 'rgba(24,30,30,.55)';
+      ctx.lineWidth = Math.max(0.8, bellW * 0.007);
       ctx.beginPath();
-      ctx.moveTo(0, topY);
-      ctx.bezierCurveTo(k * bellW * 0.26, topY + bellH * 0.30, k * bellW * 0.50, rimY - bellH * 0.26, k * bellW * 0.50, rimY);
+      ctx.moveTo(k * bellW * 0.30, topY + bellH * 0.46);
+      ctx.lineTo(k * bellW * 0.455, rimY);
       ctx.stroke();
     }
-
-    /* 顶部平顶帽 */
+    /* 一道水平腰线 */
+    ctx.strokeStyle = 'rgba(20,26,26,.7)';
+    ctx.lineWidth = Math.max(1.2, bellW * 0.010);
     ctx.beginPath();
-    ctx.ellipse(0, topY, bellW * 0.13, bellW * 0.045, 0, 0, 7);
-    ctx.fillStyle = 'rgba(244,250,248,' + (0.75 * glow) + ')';
-    ctx.fill();
-    ctx.strokeStyle = 'rgba(255,255,255,' + (0.7 * glow) + ')';
-    ctx.lineWidth = 1;
+    ctx.moveTo(-bellW * 0.415, topY + bellH * 0.46);
+    ctx.lineTo(bellW * 0.415, topY + bellH * 0.46);
+    ctx.stroke();
+    ctx.strokeStyle = 'rgba(255,255,255,.40)';
+    ctx.lineWidth = Math.max(0.8, bellW * 0.006);
+    ctx.beginPath();
+    ctx.moveTo(-bellW * 0.415, topY + bellH * 0.475);
+    ctx.lineTo(bellW * 0.415, topY + bellH * 0.475);
     ctx.stroke();
 
-    /* 块状高光（左上 2 块） */
-    ctx.fillStyle = 'rgba(255,255,255,' + (0.30 * glow) + ')';
+    /* 镜面高光（左上不规则块） */
+    /* 硬边高光碎片 */
+    ctx.fillStyle = 'rgba(255,255,255,' + glow + ')';
     ctx.beginPath();
-    ctx.ellipse(-bellW * 0.24, topY + bellH * 0.34, bellW * 0.115, bellW * 0.038, -0.34, 0, 7);
+    ctx.moveTo(-bellW * 0.29, topY + bellH * 0.24);
+    ctx.lineTo(-bellW * 0.12, topY + bellH * 0.14);
+    ctx.lineTo(-bellW * 0.10, topY + bellH * 0.21);
+    ctx.lineTo(-bellW * 0.27, topY + bellH * 0.31);
+    ctx.closePath();
     ctx.fill();
-    ctx.fillStyle = 'rgba(255,255,255,' + (0.16 * glow) + ')';
+    ctx.fillStyle = 'rgba(255,255,255,' + (0.55 * glow) + ')';
     ctx.beginPath();
-    ctx.ellipse(-bellW * 0.10, topY + bellH * 0.60, bellW * 0.075, bellW * 0.024, -0.34, 0, 7);
+    ctx.moveTo(-bellW * 0.36, topY + bellH * 0.40);
+    ctx.lineTo(-bellW * 0.22, topY + bellH * 0.34);
+    ctx.lineTo(-bellW * 0.21, topY + bellH * 0.38);
+    ctx.lineTo(-bellW * 0.35, topY + bellH * 0.44);
+    ctx.closePath();
     ctx.fill();
-
-    /* 强弧形高光（左上） */
-    ctx.strokeStyle = 'rgba(255,255,255,' + (0.55 * glow) + ')';
-    ctx.lineWidth = Math.max(2.2, bellW * 0.030);
+    ctx.fillStyle = 'rgba(255,255,255,' + (0.45 * glow) + ')';
     ctx.beginPath();
-    ctx.ellipse(-bellW * 0.06, rimY, bellW * 0.44, bellH * 0.92, 0, Math.PI * 1.12, Math.PI * 1.62);
-    ctx.stroke();
-    ctx.strokeStyle = 'rgba(255,255,255,' + (0.22 * glow) + ')';
-    ctx.lineWidth = Math.max(1.4, bellW * 0.016);
+    ctx.ellipse(-bellW * 0.05, topY + bellH * 0.13, bellW * 0.055, bellW * 0.022, -0.42, 0, 7);
+    ctx.fill();
+    /* 纯白镜面核（金属反光点） */
+    ctx.fillStyle = 'rgba(255,255,255,1)';
     ctx.beginPath();
-    ctx.ellipse(bellW * 0.10, rimY, bellW * 0.40, bellH * 0.86, 0, Math.PI * 1.70, Math.PI * 1.94);
-    ctx.stroke();
+    ctx.ellipse(-bellW * 0.175, topY + bellH * 0.195, bellW * 0.048, bellW * 0.019, -0.42, 0, 7);
+    ctx.fill();
+    ctx.restore();
 
-    /* 轮廓 + 边缘光 */
+    /* 轮廓 + 左缘光 */
+    headPath();
+    ctx.strokeStyle = 'rgba(255,255,255,' + (0.30 * glow) + ')';
+    ctx.lineWidth = Math.max(1, bellW * 0.010);
+    ctx.stroke();
     const rim = ctx.createLinearGradient(-bellW * 0.5, 0, bellW * 0.5, 0);
-    rim.addColorStop(0, 'rgba(172,214,232,.95)');
-    rim.addColorStop(0.45, 'rgba(255,255,255,.85)');
-    rim.addColorStop(1, 'rgba(255,150,196,.85)');
+    rim.addColorStop(0, 'rgba(200,238,248,.95)');
+    rim.addColorStop(0.35, 'rgba(255,255,255,.30)');
+    rim.addColorStop(1, 'rgba(255,120,150,.75)');
     ctx.strokeStyle = rim;
-    ctx.lineWidth = Math.max(1.2, bellW * 0.016);
+    ctx.lineWidth = Math.max(1.3, bellW * 0.014);
     ctx.beginPath();
-    ctx.moveTo(-bellW * 0.5, rimY);
-    ctx.bezierCurveTo(-bellW * 0.50, topY + bellH * 0.06, -bellW * 0.24, topY, 0, topY);
-    ctx.bezierCurveTo(bellW * 0.24, topY, bellW * 0.50, topY + bellH * 0.06, bellW * 0.5, rimY);
+    ctx.moveTo(-bellW * 0.46, rimY);
+    ctx.bezierCurveTo(-bellW * 0.50, topY + bellH * 0.30, -bellW * 0.34, topY, 0, topY);
     ctx.stroke();
 
-    /* 伞沿椭圆 */
-    ctx.strokeStyle = 'rgba(230,244,248,' + (0.60 * glow) + ')';
-    ctx.lineWidth = 1.4;
+    /* 下沿椭圆（收口） */
+    ctx.strokeStyle = 'rgba(255,255,255,' + (0.45 * glow) + ')';
+    ctx.lineWidth = Math.max(1.2, bellW * 0.012);
     ctx.beginPath();
-    ctx.ellipse(0, rimY, bellW * 0.5, bellW * 0.086, 0, 0, Math.PI);
+    ctx.ellipse(0, rimY, bellW * 0.455, bellW * 0.072, 0, 0, Math.PI);
     ctx.stroke();
+    ctx.strokeStyle = 'rgba(18,24,24,.75)';
+    ctx.lineWidth = Math.max(1, bellW * 0.009);
+    ctx.beginPath();
+    ctx.ellipse(0, rimY + bellW * 0.012, bellW * 0.44, bellW * 0.068, 0, 0, Math.PI);
+    ctx.stroke();
+
+    /* ================= 4. 传感器阵列（6 枚红点） ================= */
+    const senY = rimY + bellH * 0.055;
+    for (let k = 0; k < 6; k++) {
+      const a = Math.PI * (0.18 + 0.64 * k / 5);
+      const rr = bellW * 0.20;
+      const px = Math.cos(a) * rr;
+      const py = senY + Math.sin(a) * rr * 0.28;
+      const pulse = 0.45 + 0.55 * (0.5 + 0.5 * Math.sin(t * 3.1 + k * 0.9 + seed));
+      const lit = 0.35 + 0.65 * pulse * (0.4 + 0.6 * active);
+      const g3 = ctx.createRadialGradient(px, py, 0, px, py, bellW * 0.055);
+      g3.addColorStop(0, 'rgba(255,120,130,' + (0.85 * lit * glow) + ')');
+      g3.addColorStop(0.45, 'rgba(255,40,64,' + (0.45 * lit * glow) + ')');
+      g3.addColorStop(1, 'rgba(255,40,64,0)');
+      ctx.fillStyle = g3;
+      ctx.beginPath(); ctx.arc(px, py, bellW * 0.055, 0, 7); ctx.fill();
+      ctx.fillStyle = 'rgba(255,226,226,' + (0.85 * lit * glow) + ')';
+      ctx.beginPath(); ctx.arc(px, py, Math.max(1.1, bellW * 0.013), 0, 7); ctx.fill();
+    }
 
     ctx.restore();
   }
@@ -283,7 +405,7 @@
       this.prefs = PREFS[i];
       this.pi = 0;
       this.route = this.prefs;
-      this.w = [200, 176, 210, 168][i];
+      this.w = [152, 136, 160, 128][i];
       this.seed = i * 2.1;
       this.pos = { x: DOCKS[this.route[0]].x + rf(-40, 40), y: DOCKS[this.route[0]].y + rf(-40, 40) };
       this.vel = { x: 0, y: 0 };
@@ -499,10 +621,11 @@
       ctx.rotate(this.tilt);
       ctx.scale(pulse, 2 - pulse);
       /* 外发光 */
-      ctx.shadowColor = 'rgba(190,215,230,.55)';
-      ctx.shadowBlur = 26;
+      ctx.shadowColor = 'rgba(150,200,220,.42)';
+      ctx.shadowBlur = 16;
       const ends = [];
-      drawMedusa(ctx, this.w, t, { seed: this.seed, bend: bend, glow: 1, ends: ends });
+      const act = (this.state === 'read' || this.state === 'grab') ? 1 : 0.35;
+      drawMedusa(ctx, this.w, t, { seed: this.seed, bend: bend, glow: 1, ends: ends, active: act });
       ctx.shadowBlur = 0;
       ctx.restore();
       this._ends = ends;

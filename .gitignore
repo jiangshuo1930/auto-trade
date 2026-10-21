@@ -30,3 +30,6 @@ desktop.ini
 .DS_Store
 .idea/
 .vscode/
+
+# ---- 嵌套独立仓库（勿并入）----
+auto_trade/
